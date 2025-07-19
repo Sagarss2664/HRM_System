@@ -1,0 +1,74 @@
+/* Root Container */
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  background-color: #f5f5f5; /* Light background for the root container */
+}
+
+/* Logo Styling */
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms ease-in-out; /* Smoother transition for hover */
+}
+
+/* Logo Hover Effects */
+.logo:hover {
+  filter: drop-shadow(0 0 2em rgba(100, 108, 255, 0.7)); /* Slightly transparent shadow */
+}
+
+/* React Logo Hover */
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em rgba(97, 218, 251, 0.7)); /* React-specific hover effect */
+}
+
+/* Logo Spin Animation */
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animation for Logo (when no reduced motion preference) */
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+/* Card Styling */
+.card {
+  padding: 2em;
+  background-color: #fff; /* Card background */
+  border-radius: 10px; /* Rounded corners */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Soft shadow for cards */
+  transition: transform 0.3s ease; /* Smooth scaling transition */
+}
+
+.card:hover {
+  transform: scale(1.05); /* Slight zoom effect on hover */
+}
+
+/* Read the Docs Text */
+.read-the-docs {
+  color: #888;
+  font-size: 14px; /* Smaller text for the link */
+  margin-top: 1rem; /* Space above the text */
+}
+
+/* Link Styling (for 'Read the Docs' and similar links) */
+.read-the-docs a {
+  color: #61dafb; /* React-like blue */
+  text-decoration: none;
+  transition: color 0.2s ease-in-out; /* Smooth color transition */
+}
+
+.read-the-docs a:hover {
+  color: #21a1f1; /* Darker blue on hover */
+}
