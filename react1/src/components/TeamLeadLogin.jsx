@@ -13,7 +13,7 @@
 //     setMessage("");
 
 //     try {
-//       const response = await axios.post("http://localhost:5001/api/login/teamlead", {
+//       const response = await axios.post("https://hrm-system-vm5e.onrender.com/api/login/teamlead", {
 //         employeeId,
 //         password,
 //       });
@@ -82,7 +82,7 @@ function TeamLeadLogin() {
     setMessage("");
 
     try {
-      const response = await axios.post("http://localhost:5001/api/login/teamlead", {
+      const response = await axios.post("https://hrm-system-vm5e.onrender.com/api/login/teamlead", {
         employeeId,
         password,
       });
