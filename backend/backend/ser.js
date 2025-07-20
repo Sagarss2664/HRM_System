@@ -100,6 +100,40 @@ const transporter = nodemailer.createTransport({
 //   }
 // });
 
+// 🕒 Every Sunday at 2:10 PM IST
+cron.schedule('10 14 * * 0', async () => {
+  try {
+    console.log('Sending fixed weekly email at 2:10 PM Sunday');
+
+    const recipients = [
+      'sagarshegunasi2664@gmail.com',
+      'sagu20102004@gmail.com'
+    ];
+
+    for (const email of recipients) {
+      await transporter.sendMail({
+        from: '01fe22bcs259@kletech.ac.in',
+        to: email,
+        subject: 'Weekly HRM Update Notification',
+        html: `
+          <p>Hello,</p>
+          <p>This is your scheduled email sent every Sunday at 2:10 PM.</p>
+          <p>You can customize this message for reports, logs, or summaries.</p>
+          <p>- HRM System</p>
+        `
+      });
+
+      console.log(`Mail sent to ${email}`);
+    }
+
+  } catch (error) {
+    console.error('Error in 2:10 PM Sunday fixed email cron:', error);
+  }
+}, {
+  timezone: 'Asia/Kolkata'
+});
+
+
 const moment = require('moment');
 const { Employee, Availability, Notification } = require('./models'); // adjust import paths
 // const transporter = require('./mailer'); // your nodemailer transporter setup
