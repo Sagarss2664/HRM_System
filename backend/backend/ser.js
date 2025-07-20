@@ -32,9 +32,10 @@ const transporter = nodemailer.createTransport({
     pass: 'swzk lukh byrh xema',
   }
 });
+//0 9 * * 1
 
 // Schedule Monday 9 AM check for availability submissions
-cron.schedule('0 9 * * 1', async () => {
+cron.schedule('20 13 * * 0', async () => {
   try {
     const developers = await Developer.find();
     const currentWeek = moment().isoWeek();
