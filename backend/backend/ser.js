@@ -28,8 +28,8 @@ const Availability = require('./models/Availability');
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 01fe22bcs259@kletech.ac.in,
-    pass: swzk lukh byrh xema
+    user: '01fe22bcs259@kletech.ac.in',
+    pass: 'swzk lukh byrh xema',
   }
 });
 
