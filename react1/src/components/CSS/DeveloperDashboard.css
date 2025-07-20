@@ -1657,3 +1657,47 @@
     width: 100%;
   }
 }
+.productivity-container {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.score-display {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #28a745;
+  margin: 10px 0;
+}
+
+.score-display.zero {
+  color: #dc3545;
+}
+
+.productivity-message {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.hours-comparison div {
+  display: flex;
+  justify-content: space-between;
+  margin: 5px 0;
+}
+
+.positive {
+  color: #28a745;
+}
+
+.negative {
+  color: #dc3545;
+}
+
+.productivity-tips ul {
+  padding-left: 20px;
+}
+
+.productivity-tips li {
+  margin-bottom: 8px;
+}

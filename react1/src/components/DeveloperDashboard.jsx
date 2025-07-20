@@ -82,47 +82,69 @@ const DeveloperDashboard = () => {
   }, [navigate]);
 
   // Fetch initial data
-  const fetchInitialData = async (developerId) => {
-    try {
-      const [
-        availabilityRes, 
-        workLogsRes, 
-        notificationsRes, 
-        plannedActualRes,
-        todayStatusRes,
-        productivityRes
-      ] = await Promise.all([
-        axios.get(`http://localhost:5001/api/developer/${developerId}/availability`),
-        axios.get(`http://localhost:5001/api/developer/${developerId}/worklogs`),
-        axios.get(`http://localhost:5001/api/developer/${developerId}/notifications`),
-        axios.get(`http://localhost:5001/api/developer/${developerId}/planned-vs-actual`),
-        axios.get(`http://localhost:5001/api/developer/${developerId}/today-status`),
-        axios.get(`http://localhost:5001/api/developer/${developerId}/productivity`)
-      ]);
-      
-      setAvailability(availabilityRes.data.availability || {
-        Monday: [], Tuesday: [], Wednesday: [], Thursday: [], 
-        Friday: [], Saturday: [], Sunday: []
-      });
-      setWorkLogs(workLogsRes.data.workLogs);
-      setNotifications(notificationsRes.data.notifications);
-      setPlannedVsActual(plannedActualRes.data.comparison);
-      setTodayLog(todayStatusRes.data.todayLog);
-      setProductivityScore(productivityRes.data.score);
-      setProductivityTips(productivityRes.data.tips);
-      setUnreadNotifications(notificationsRes.data.unreadCount);
-      
-      // Calculate total weekly hours
-      calculateWeeklyHours(availabilityRes.data.availability);
-      setIsAvailabilitySubmitted(availabilityRes.data.isSubmitted);
-      
-      // Check if it's Monday before 9 AM
-      checkAvailabilityDeadline();
-    } catch (error) {
-      console.error('Error fetching initial data:', error);
-      toast.error('Failed to load dashboard data');
-    }
-  };
+ const fetchInitialData = async (developerId) => {
+  try {
+    const [
+      availabilityRes, 
+      workLogsRes, 
+      notificationsRes, 
+      plannedActualRes,
+      todayStatusRes,
+      productivityRes
+    ] = await Promise.all([
+      axios.get(`http://localhost:5001/api/developer/${developerId}/availability`),
+      axios.get(`http://localhost:5001/api/developer/${developerId}/worklogs`),
+      axios.get(`http://localhost:5001/api/developer/${developerId}/notifications`),
+      axios.get(`http://localhost:5001/api/developer/${developerId}/planned-vs-actual`),
+      axios.get(`http://localhost:5001/api/developer/${developerId}/today-status`),
+      axios.get(`http://localhost:5001/api/developer/${developerId}/productivity`)
+    ]);
+
+    // Ensure plannedVsActual always has valid data
+    const plannedActualData = plannedActualRes.data.comparison || 
+      ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        .map(day => ({ day, plannedMinutes: 0, actualMinutes: 0, productivity: 0 }));
+
+    setAvailability(availabilityRes.data.availability || {
+      Monday: [], Tuesday: [], Wednesday: [], Thursday: [], 
+      Friday: [], Saturday: [], Sunday: []
+    });
+    setWorkLogs(workLogsRes.data.workLogs || []);
+    setNotifications(notificationsRes.data.notifications || []);
+    setPlannedVsActual(plannedActualData);
+    setTodayLog(todayStatusRes.data.todayLog || {
+      loginTime: null,
+      logoutTime: null,
+      isWorking: false,
+      durationMinutes: 0
+    });
+    setProductivityScore(productivityRes.data.score || 0);
+    setProductivityTips(productivityRes.data.tips || []);
+    setUnreadNotifications(notificationsRes.data.unreadCount || 0);
+
+    calculateWeeklyHours(availabilityRes.data.availability || {
+      Monday: [], Tuesday: [], Wednesday: [], Thursday: [], 
+      Friday: [], Saturday: [], Sunday: []
+    });
+    setIsAvailabilitySubmitted(availabilityRes.data.isSubmitted || false);
+    
+    checkAvailabilityDeadline();
+  } catch (error) {
+    console.error('Error fetching initial data:', error);
+    toast.error('Failed to load dashboard data');
+    
+    // Set default values on error
+    setPlannedVsActual(
+      ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        .map(day => ({ day, plannedMinutes: 0, actualMinutes: 0, productivity: 0 }))
+    );
+    setAvailability({
+      Monday: [], Tuesday: [], Wednesday: [], Thursday: [], 
+      Friday: [], Saturday: [], Sunday: []
+    });
+    setIsAvailabilitySubmitted(false);
+  }
+};
   // Frontend example
   // 1. State initialization
 // const [availability, setAvailability] = useState({
@@ -139,7 +161,8 @@ const DeveloperDashboard = () => {
 // 2. Enhanced data fetching
 const fetchAvailabilityData = async (developerId) => {
   try {
-    const response = await axios.get(`/api/developer/${developerId}/availability`);
+    const response = await axios.get(`http://localhost:5001/api/developer/${developerId}/availability`);
+
     setAvailability(response.data.availability);
     setIsAvailabilitySubmitted(response.data.isSubmitted);
   } catch (error) {
@@ -392,6 +415,95 @@ const saveAvailability = async (developerId, availabilityData) => {
     setLoading(false);
   }
 };
+const ProductivityDisplay = () => {
+  const [productivityData, setProductivityData] = useState({
+    score: 0,
+    message: 'Loading...',
+    tips: [],
+    meta: {}
+  });
+
+  useEffect(() => {
+    const fetchProductivity = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:5001/api/developer/${developer._id}/productivity`
+        );
+        
+        if (response.data.success) {
+          setProductivityData({
+            score: response.data.score,
+            message: response.data.message,
+            tips: response.data.tips,
+            meta: response.data.meta
+          });
+        } else {
+          setProductivityData({
+            score: 0,
+            message: 'Error loading data',
+            tips: ['Could not load productivity data']
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching productivity:', error);
+        setProductivityData({
+          score: 0,
+          message: 'Connection error',
+          tips: ['Failed to connect to server']
+        });
+      }
+    };
+
+    fetchProductivity();
+  }, [developer._id]);
+
+  return (
+    <div className="productivity-container">
+      <div className="productivity-score">
+        <h3>Productivity Score</h3>
+        <div className={`score-display ${productivityData.score === 0 ? 'zero' : ''}`}>
+          {productivityData.score}%
+        </div>
+        <p className="productivity-message">{productivityData.message}</p>
+      </div>
+
+      <div className="planned-vs-actual">
+        <h3>Planned vs Actual Hours</h3>
+        <div className="hours-comparison">
+          <div>
+            <span>Planned:</span>
+            <span>{Math.round(productivityData.meta.totalPlannedMinutes / 60)} hours</span>
+          </div>
+          <div>
+            <span>Actual:</span>
+            <span>{Math.round(productivityData.meta.totalActualMinutes / 60)} hours</span>
+          </div>
+          <div>
+            <span>Variance:</span>
+            <span className={
+              productivityData.meta.totalActualMinutes >= productivityData.meta.totalPlannedMinutes ? 
+              'positive' : 'negative'
+            }>
+              {Math.round(
+                (productivityData.meta.totalActualMinutes - productivityData.meta.totalPlannedMinutes) / 60
+              )} hours
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="productivity-tips">
+        <h3>Productivity Tips</h3>
+        <ul>
+          {productivityData.tips.map((tip, index) => (
+            <li key={index}>{tip}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
 
   // Logout from dashboard
   const handleLogout = () => {

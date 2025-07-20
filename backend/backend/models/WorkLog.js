@@ -1,5 +1,3 @@
-const mongoose = require('mongoose');
-
 const WorkLogSchema = new mongoose.Schema({
   developer: {
     type: mongoose.Schema.Types.ObjectId,
@@ -8,10 +6,12 @@ const WorkLogSchema = new mongoose.Schema({
   },
   date: {
     type: Date,
-    required: true
+    required: true,
+    default: Date.now
   },
   loginTime: {
-    type: Date
+    type: Date,
+    required: true
   },
   logoutTime: {
     type: Date
@@ -20,6 +20,10 @@ const WorkLogSchema = new mongoose.Schema({
     type: Number,
     default: 0
   }
-});
+}, { timestamps: true });
 
-module.exports = mongoose.model('WorkLog', WorkLogSchema);
+// Add indexes for better query performance
+WorkLogSchema.index({ developer: 1, date: 1 });
+WorkLogSchema.index({ date: 1 });
+
+const WorkLog = mongoose.model('WorkLog', WorkLogSchema);

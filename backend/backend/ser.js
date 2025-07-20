@@ -386,24 +386,111 @@ app.post('/api/developer/:id/availability', async (req, res) => {
 });
 
 
-// Developer Login (start work session)
+// // Developer Login (start work session)
+// app.post('/api/developer/:id/login', async (req, res) => {
+//   try {
+//     const today = moment().startOf('day');
+    
+//     // Check if there's an existing log for today
+//     let workLog = await WorkLog.findOne({
+//       developer: req.params.id,
+//       date: {
+//         $gte: today.toDate(),
+//         $lt: moment(today).endOf('day').toDate()
+//       }
+//     });
+    
+//     if (workLog && workLog.loginTime && !workLog.logoutTime) {
+//       return res.status(400).json({ message: 'You are already logged in' });
+//     }
+    
+//     if (!workLog) {
+//       workLog = new WorkLog({
+//         developer: req.params.id,
+//         date: new Date(),
+//         loginTime: new Date()
+//       });
+//     } else {
+//       workLog.loginTime = new Date();
+//       workLog.logoutTime = null;
+//       workLog.durationMinutes = 0;
+//     }
+    
+//     await workLog.save();
+    
+//     res.json({
+//       message: 'Work session started',
+//       todayLog: {
+//         loginTime: workLog.loginTime,
+//         logoutTime: workLog.logoutTime,
+//         isWorking: true
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Login error:', error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
+
+
+// // Developer Logout (end work session)
+// app.post('/api/developer/:id/logout', async (req, res) => {
+//   try {
+//     const today = moment().startOf('day');
+    
+//     const workLog = await WorkLog.findOne({
+//       developer: req.params.id,
+//       date: {
+//         $gte: today.toDate(),
+//         $lt: moment(today).endOf('day').toDate()
+//       }
+//     });
+    
+//     if (!workLog || !workLog.loginTime) {
+//       return res.status(400).json({ message: 'No active work session found' });
+//     }
+    
+//     if (workLog.logoutTime) {
+//       return res.status(400).json({ message: 'You are already logged out' });
+//     }
+    
+//     workLog.logoutTime = new Date();
+//     workLog.durationMinutes = moment(workLog.logoutTime).diff(moment(workLog.loginTime), 'minutes');
+//     await workLog.save();
+    
+//     res.json({
+//       message: 'Work session ended',
+//       todayLog: {
+//         loginTime: workLog.loginTime,
+//         logoutTime: workLog.logoutTime,
+//         isWorking: false,
+//         durationMinutes: workLog.durationMinutes
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Logout error:', error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
+// Update login endpoint
 app.post('/api/developer/:id/login', async (req, res) => {
   try {
-    const today = moment().startOf('day');
-    
-    // Check if there's an existing log for today
+    const todayStart = moment().startOf('day').toDate();
+    const todayEnd = moment().endOf('day').toDate();
+
+    // Debug log
+    console.log(`Developer ${req.params.id} login attempt at ${new Date()}`);
+
     let workLog = await WorkLog.findOne({
       developer: req.params.id,
-      date: {
-        $gte: today.toDate(),
-        $lt: moment(today).endOf('day').toDate()
-      }
+      date: { $gte: todayStart, $lte: todayEnd }
     });
-    
-    if (workLog && workLog.loginTime && !workLog.logoutTime) {
+
+    if (workLog && !workLog.logoutTime) {
+      console.log('Login denied - already logged in');
       return res.status(400).json({ message: 'You are already logged in' });
     }
-    
+
     if (!workLog) {
       workLog = new WorkLog({
         developer: req.params.id,
@@ -415,9 +502,10 @@ app.post('/api/developer/:id/login', async (req, res) => {
       workLog.logoutTime = null;
       workLog.durationMinutes = 0;
     }
-    
+
     await workLog.save();
-    
+    console.log(`Login recorded for developer ${req.params.id}`);
+
     res.json({
       message: 'Work session started',
       todayLog: {
@@ -432,32 +520,36 @@ app.post('/api/developer/:id/login', async (req, res) => {
   }
 });
 
-
-// Developer Logout (end work session)
+// Update logout endpoint
 app.post('/api/developer/:id/logout', async (req, res) => {
   try {
-    const today = moment().startOf('day');
-    
+    const todayStart = moment().startOf('day').toDate();
+    const todayEnd = moment().endOf('day').toDate();
+
+    // Debug log
+    console.log(`Developer ${req.params.id} logout attempt at ${new Date()}`);
+
     const workLog = await WorkLog.findOne({
       developer: req.params.id,
-      date: {
-        $gte: today.toDate(),
-        $lt: moment(today).endOf('day').toDate()
-      }
+      date: { $gte: todayStart, $lte: todayEnd }
     });
-    
+
     if (!workLog || !workLog.loginTime) {
+      console.log('Logout denied - no active session');
       return res.status(400).json({ message: 'No active work session found' });
     }
-    
+
     if (workLog.logoutTime) {
+      console.log('Logout denied - already logged out');
       return res.status(400).json({ message: 'You are already logged out' });
     }
-    
+
     workLog.logoutTime = new Date();
     workLog.durationMinutes = moment(workLog.logoutTime).diff(moment(workLog.loginTime), 'minutes');
-    await workLog.save();
     
+    await workLog.save();
+    console.log(`Logout recorded for developer ${req.params.id}`);
+
     res.json({
       message: 'Work session ended',
       todayLog: {
@@ -472,6 +564,7 @@ app.post('/api/developer/:id/logout', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 // Get Today's Work Status
 app.get('/api/developer/:id/today-status', async (req, res) => {
@@ -582,45 +675,284 @@ app.get('/api/developer/:id/planned-vs-actual', async (req, res) => {
     const currentWeek = moment().isoWeek();
     const currentYear = moment().year();
     
-    const availability = await Availability.findOne({
-      developer: req.params.id,
+    const comparison = await calculatePlannedVsActual(req.params.id, currentWeek, currentYear);
+    
+    res.json({ 
+      success: true,
+      comparison,
       week: currentWeek,
       year: currentYear
     });
+  } catch (error) {
+    console.error('Planned vs actual error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error calculating planned vs actual',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Get Productivity Score
+// app.get('/api/developer/:id/productivity', async (req, res) => {
+//   try {
+//     const currentWeek = moment().isoWeek();
+//     const currentYear = moment().year();
+    
+//     // Get planned vs actual data
+//     const plannedVsActual = await calculatePlannedVsActual(req.params.id, currentWeek, currentYear);
+    
+//     // Calculate overall productivity score
+//     let totalPlanned = 0;
+//     let totalActual = 0;
+    
+//     plannedVsActual.forEach(day => {
+//       totalPlanned += day.plannedMinutes;
+//       totalActual += day.actualMinutes;
+//     });
+    
+//     let productivityScore = 0;
+//     if (totalPlanned > 0) {
+//       productivityScore = Math.min(100, Math.round((totalActual / totalPlanned) * 100));
+//     }
+    
+//     // Generate productivity tips based on score
+//     const tips = [];
+    
+//     if (productivityScore < 60) {
+//       tips.push(
+//         'Try to minimize distractions during work hours',
+//         'Align your work sessions with your most productive times',
+//         'Break large tasks into smaller, manageable chunks',
+//         'Communicate blockers to your manager early'
+//       );
+//     } else if (productivityScore < 80) {
+//       tips.push(
+//         'Reduce context switching between tasks',
+//         'Schedule focus blocks in your calendar',
+//         'Take regular breaks to maintain energy'
+//       );
+//     } else {
+//       tips.push(
+//         'Consider mentoring others',
+//         'Look for opportunities to take on stretch goals',
+//         'Share your productivity techniques with the team'
+//       );
+//     }
+    
+//     res.json({
+//       score: productivityScore,
+//       tips
+//     });
+//   } catch (error) {
+//     console.error('Productivity error:', error);
+//     res.status(500).json({ 
+//       message: 'Error calculating productivity',
+//       error: error.message 
+//     });
+//   }
+// });
+
+// // Update the productivity calculation endpoint
+// app.get('/api/developer/:id/productivity', async (req, res) => {
+//   try {
+//     const developerId = req.params.id;
+    
+//     // Verify developer exists
+//     const developer = await Developer.findById(developerId);
+//     if (!developer) {
+//       return res.status(404).json({ message: 'Developer not found' });
+//     }
+
+//     const currentWeek = moment().isoWeek();
+//     const currentYear = moment().year();
+    
+//     // Get planned vs actual with better error handling
+//     let comparison;
+//     try {
+//       comparison = await calculatePlannedVsActual(developerId, currentWeek, currentYear);
+//     } catch (error) {
+//       console.error('Error calculating planned vs actual:', error);
+//       comparison = [];
+//     }
+
+//     // Calculate overall productivity score with fallbacks
+//     let totalPlanned = 0;
+//     let totalActual = 0;
+    
+//     comparison.forEach(day => {
+//       totalPlanned += day.plannedMinutes || 0;
+//       totalActual += day.actualMinutes || 0;
+//     });
+    
+//     let productivityScore = 0;
+//     let productivityMessage = 'No productivity data available';
+    
+//     if (totalPlanned > 0) {
+//       productivityScore = Math.min(100, Math.round((totalActual / totalPlanned) * 100));
+//       productivityMessage = totalActual > 0 ? 
+//         'Productivity calculated' : 
+//         'No work sessions recorded';
+//     }
+
+//     // Generate productivity tips with more context
+//     const tips = generateProductivityTips(productivityScore, totalActual);
+    
+//     res.json({
+//       success: true,
+//       score: productivityScore,
+//       message: productivityMessage,
+//       tips,
+//       meta: {
+//         totalPlannedMinutes: totalPlanned,
+//         totalActualMinutes: totalActual,
+//         week: currentWeek,
+//         year: currentYear
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error('Productivity calculation error:', error);
+//     res.status(500).json({ 
+//       success: false,
+//       message: 'Error calculating productivity',
+//       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+//     });
+//   }
+// });
+
+// Improved helper function
+// async function calculatePlannedVsActual(developerId, week, year) {
+//   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+//   const comparison = [];
+
+//   // Get availability once for the whole week
+//   const availability = await Availability.findOne({
+//     developer: developerId,
+//     week,
+//     year
+//   });
+
+//   for (const day of daysOfWeek) {
+//     // Calculate planned minutes with better null checks
+//     let plannedMinutes = 0;
+//     if (availability?.availability?.[day]) {
+//       availability.availability[day].forEach(slot => {
+//         try {
+//           const start = moment(slot.startTime, 'HH:mm');
+//           const end = moment(slot.endTime, 'HH:mm');
+//           plannedMinutes += end.diff(start, 'minutes');
+//         } catch (e) {
+//           console.error(`Invalid time slot for ${day}:`, slot);
+//         }
+//       });
+//     }
+
+//     // Calculate actual minutes with date range check
+//     const dayStart = moment().isoWeek(week).year(year).isoWeekday(day).startOf('day');
+//     const dayEnd = moment(dayStart).endOf('day');
+    
+//     let actualMinutes = 0;
+//     try {
+//       const workLogs = await WorkLog.find({
+//         developer: developerId,
+//         date: { $gte: dayStart.toDate(), $lt: dayEnd.toDate() },
+//         logoutTime: { $ne: null }
+//       });
+
+//       workLogs.forEach(log => {
+//         actualMinutes += log.durationMinutes || 0;
+//       });
+//     } catch (error) {
+//       console.error(`Error fetching work logs for ${day}:`, error);
+//     }
+
+//     comparison.push({
+//       day,
+//       plannedMinutes,
+//       actualMinutes,
+//       productivity: plannedMinutes > 0 ? 
+//         Math.min(100, Math.round((actualMinutes / plannedMinutes) * 100)) : 0
+//     });
+//   }
+
+//   return comparison;
+// }
+async function calculatePlannedVsActual(developerId, week, year) {
+  try {
+    // Verify developer exists
+    const developer = await Developer.findById(developerId);
+    if (!developer) {
+      throw new Error('Developer not found');
+    }
 
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const comparison = [];
 
+    // Get availability for the week
+    const availability = await Availability.findOne({
+      developer: developerId,
+      week,
+      year
+    });
+
+    // Process each day
     for (const day of daysOfWeek) {
       // Calculate planned minutes
       let plannedMinutes = 0;
-      if (availability && availability.availability[day]) {
-        availability.availability[day].forEach(slot => {
-          const start = moment(slot.startTime, 'HH:mm');
-          const end = moment(slot.endTime, 'HH:mm');
-          plannedMinutes += end.diff(start, 'minutes');
-        });
+      if (availability?.availability?.[day]?.length > 0) {
+        for (const slot of availability.availability[day]) {
+          try {
+            const start = moment(slot.startTime, 'HH:mm');
+            const end = moment(slot.endTime, 'HH:mm');
+            
+            if (!start.isValid() || !end.isValid()) {
+              console.warn(`Invalid time format for ${day} slot:`, slot);
+              continue;
+            }
+            
+            if (end.isSameOrBefore(start)) {
+              console.warn(`End time before start time for ${day} slot:`, slot);
+              continue;
+            }
+            
+            plannedMinutes += end.diff(start, 'minutes');
+          } catch (e) {
+            console.error(`Error processing slot for ${day}:`, e);
+          }
+        }
       }
 
       // Calculate actual minutes
-      const dayStart = moment().isoWeek(currentWeek).year(currentYear).isoWeekday(day).startOf('day');
-      const dayEnd = moment(dayStart).endOf('day');
-      
-      const workLogs = await WorkLog.find({
-        developer: req.params.id,
-        date: {
-          $gte: dayStart.toDate(),
-          $lt: dayEnd.toDate()
-        },
-        logoutTime: { $ne: null }
-      });
-
       let actualMinutes = 0;
-      workLogs.forEach(log => {
-        actualMinutes += log.durationMinutes || 0;
-      });
+      try {
+        const dayStart = moment().set({week, year}).isoWeekday(day).startOf('day').utc();
+        const dayEnd = moment(dayStart).endOf('day').utc();
+        
+        const workLogs = await WorkLog.find({
+          developer: developerId,
+          date: { 
+            $gte: dayStart.toDate(), 
+            $lte: dayEnd.toDate() 
+          }
+        });
 
-      // Calculate productivity percentage (if planned > 0)
+        for (const log of workLogs) {
+          if (log.logoutTime) {
+            // Completed session
+            actualMinutes += log.durationMinutes || 0;
+          } else if (log.loginTime) {
+            // Ongoing session
+            const sessionEnd = moment().utc();
+            const sessionStart = moment(log.loginTime).utc();
+            actualMinutes += sessionEnd.diff(sessionStart, 'minutes');
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching work logs for ${day}:`, error);
+      }
+
+      // Calculate productivity
       let productivity = 0;
       if (plannedMinutes > 0) {
         productivity = Math.min(100, Math.round((actualMinutes / plannedMinutes) * 100));
@@ -634,132 +966,254 @@ app.get('/api/developer/:id/planned-vs-actual', async (req, res) => {
       });
     }
 
-    res.json({ comparison });
-  } catch (error) {
-    console.error('Planned vs actual error:', error);
-    res.status(500).json({ 
-      message: 'Error calculating planned vs actual',
-      error: error.message 
-    });
-  }
-});
+    return comparison;
 
-// Get Productivity Score
-app.get('/api/developer/:id/productivity', async (req, res) => {
-  try {
-    const currentWeek = moment().isoWeek();
-    const currentYear = moment().year();
-    
-    // Get planned vs actual data
-    const plannedVsActual = await calculatePlannedVsActual(req.params.id, currentWeek, currentYear);
-    
-    // Calculate overall productivity score
-    let totalPlanned = 0;
-    let totalActual = 0;
-    
-    plannedVsActual.forEach(day => {
-      totalPlanned += day.plannedMinutes;
-      totalActual += day.actualMinutes;
-    });
-    
-    let productivityScore = 0;
-    if (totalPlanned > 0) {
-      productivityScore = Math.min(100, Math.round((totalActual / totalPlanned) * 100));
-    }
-    
-    // Generate productivity tips based on score
-    const tips = [];
-    
-    if (productivityScore < 60) {
-      tips.push(
-        'Try to minimize distractions during work hours',
-        'Align your work sessions with your most productive times',
-        'Break large tasks into smaller, manageable chunks',
-        'Communicate blockers to your manager early'
-      );
-    } else if (productivityScore < 80) {
-      tips.push(
-        'Reduce context switching between tasks',
-        'Schedule focus blocks in your calendar',
-        'Take regular breaks to maintain energy'
-      );
-    } else {
-      tips.push(
-        'Consider mentoring others',
-        'Look for opportunities to take on stretch goals',
-        'Share your productivity techniques with the team'
-      );
-    }
-    
-    res.json({
-      score: productivityScore,
-      tips
-    });
   } catch (error) {
-    console.error('Productivity error:', error);
-    res.status(500).json({ 
-      message: 'Error calculating productivity',
-      error: error.message 
-    });
+    console.error('Error in calculatePlannedVsActual:', error);
+    // Return default structure on error
+    return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+      .map(day => ({ 
+        day, 
+        plannedMinutes: 0, 
+        actualMinutes: 0, 
+        productivity: 0 
+      }));
   }
-});
+}
+
+// New helper function for tips
+function generateProductivityTips(score, totalActual) {
+  const tips = [];
+  
+  if (totalActual === 0) {
+    tips.push(
+      'No work sessions recorded this week',
+      'Make sure to log in and out of your work sessions',
+      'Contact support if you believe this is incorrect'
+    );
+    return tips;
+  }
+
+  if (score < 60) {
+    tips.push(
+      'Try to minimize distractions during work hours',
+      'Align work sessions with your most productive times',
+      'Break large tasks into smaller chunks',
+      'Communicate blockers early'
+    );
+  } else if (score < 80) {
+    tips.push(
+      'Reduce context switching between tasks',
+      'Schedule focus blocks in your calendar',
+      'Take regular breaks to maintain energy'
+    );
+  } else {
+    tips.push(
+      'Consider mentoring others',
+      'Look for opportunities to take on stretch goals',
+      'Share your productivity techniques with the team'
+    );
+  }
+
+  return tips;
+}
 
 // Helper function for planned vs actual calculation
+// async function calculatePlannedVsActual(developerId, week, year) {
+//   const availability = await Availability.findOne({
+//     developer: developerId,
+//     week,
+//     year
+//   });
+
+//   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+//   const comparison = [];
+
+//   for (const day of daysOfWeek) {
+//     // Calculate planned minutes
+//     let plannedMinutes = 0;
+//     if (availability && availability.availability[day]) {
+//       availability.availability[day].forEach(slot => {
+//         const start = moment(slot.startTime, 'HH:mm');
+//         const end = moment(slot.endTime, 'HH:mm');
+//         plannedMinutes += end.diff(start, 'minutes');
+//       });
+//     }
+
+//     // Calculate actual minutes
+//     const dayStart = moment().isoWeek(week).year(year).isoWeekday(day).startOf('day');
+//     const dayEnd = moment(dayStart).endOf('day');
+    
+//     const workLogs = await WorkLog.find({
+//       developer: developerId,
+//       date: {
+//         $gte: dayStart.toDate(),
+//         $lt: dayEnd.toDate()
+//       },
+//       logoutTime: { $ne: null }
+//     });
+
+//     let actualMinutes = 0;
+//     workLogs.forEach(log => {
+//       actualMinutes += log.durationMinutes || 0;
+//     });
+
+//     // Calculate productivity percentage (if planned > 0)
+//     let productivity = 0;
+//     if (plannedMinutes > 0) {
+//       productivity = Math.min(100, Math.round((actualMinutes / plannedMinutes) * 100));
+//     }
+
+//     comparison.push({
+//       day,
+//       plannedMinutes,
+//       actualMinutes,
+//       productivity
+//     });
+//   }
+
+//   return comparison;
+// }
+// Replace all versions of calculatePlannedVsActual with this single version:
 async function calculatePlannedVsActual(developerId, week, year) {
-  const availability = await Availability.findOne({
-    developer: developerId,
-    week,
-    year
-  });
+  try {
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const comparison = [];
 
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const comparison = [];
+    // Get availability for the week
+    const availability = await Availability.findOne({
+      developer: developerId,
+      week,
+      year
+    });
 
-  for (const day of daysOfWeek) {
-    // Calculate planned minutes
-    let plannedMinutes = 0;
-    if (availability && availability.availability[day]) {
-      availability.availability[day].forEach(slot => {
-        const start = moment(slot.startTime, 'HH:mm');
-        const end = moment(slot.endTime, 'HH:mm');
-        plannedMinutes += end.diff(start, 'minutes');
-      });
-    }
-
-    // Calculate actual minutes
-    const dayStart = moment().isoWeek(week).year(year).isoWeekday(day).startOf('day');
-    const dayEnd = moment(dayStart).endOf('day');
+    // Get all work logs for the week
+    const weekStart = moment().set({week, year}).startOf('week').utc();
+    const weekEnd = moment(weekStart).endOf('week').utc();
     
     const workLogs = await WorkLog.find({
       developer: developerId,
-      date: {
-        $gte: dayStart.toDate(),
-        $lt: dayEnd.toDate()
-      },
-      logoutTime: { $ne: null }
+      date: { 
+        $gte: weekStart.toDate(), 
+        $lte: weekEnd.toDate() 
+      }
     });
 
-    let actualMinutes = 0;
-    workLogs.forEach(log => {
-      actualMinutes += log.durationMinutes || 0;
-    });
+    // Process each day
+    for (const day of daysOfWeek) {
+      const dayIndex = daysOfWeek.indexOf(day);
+      const dayStart = moment(weekStart).add(dayIndex, 'days').utc();
+      const dayEnd = moment(dayStart).endOf('day').utc();
 
-    // Calculate productivity percentage (if planned > 0)
-    let productivity = 0;
-    if (plannedMinutes > 0) {
-      productivity = Math.min(100, Math.round((actualMinutes / plannedMinutes) * 100));
+      // Calculate planned minutes
+      let plannedMinutes = 0;
+      if (availability?.availability?.[day]?.length > 0) {
+        for (const slot of availability.availability[day]) {
+          try {
+            const start = moment(slot.startTime, 'HH:mm');
+            const end = moment(slot.endTime, 'HH:mm');
+            
+            if (!start.isValid() || !end.isValid()) continue;
+            if (end.isSameOrBefore(start)) continue;
+            
+            plannedMinutes += end.diff(start, 'minutes');
+          } catch (e) {
+            console.error(`Error processing slot for ${day}:`, e);
+          }
+        }
+      }
+
+      // Calculate actual minutes
+      let actualMinutes = 0;
+      const dayLogs = workLogs.filter(log => 
+        moment(log.date).utc().isBetween(dayStart, dayEnd, null, '[]')
+      );
+
+      for (const log of dayLogs) {
+        if (log.logoutTime) {
+          // Completed session
+          actualMinutes += log.durationMinutes || 0;
+        } else if (log.loginTime) {
+          // Ongoing session
+          const sessionEnd = moment().utc();
+          const sessionStart = moment(log.loginTime).utc();
+          actualMinutes += sessionEnd.diff(sessionStart, 'minutes');
+        }
+      }
+
+      // Calculate productivity percentage
+      let productivity = 0;
+      if (plannedMinutes > 0) {
+        productivity = Math.min(100, Math.round((actualMinutes / plannedMinutes) * 100));
+      }
+
+      comparison.push({
+        day,
+        plannedMinutes,
+        actualMinutes,
+        productivity
+      });
     }
 
-    comparison.push({
+    return comparison;
+  } catch (error) {
+    console.error('Error in calculatePlannedVsActual:', error);
+    // Return default structure with all days
+    return daysOfWeek.map(day => ({
       day,
-      plannedMinutes,
-      actualMinutes,
-      productivity
+      plannedMinutes: 0,
+      actualMinutes: 0,
+      productivity: 0
+    }));
+  }
+}
+
+// Update the productivity endpoint:
+app.get('/api/developer/:id/productivity', async (req, res) => {
+  try {
+    const developerId = req.params.id;
+    const currentWeek = moment().isoWeek();
+    const currentYear = moment().year();
+    
+    const comparison = await calculatePlannedVsActual(developerId, currentWeek, currentYear);
+    
+    // Calculate totals
+    const totalPlanned = comparison.reduce((sum, day) => sum + day.plannedMinutes, 0);
+    const totalActual = comparison.reduce((sum, day) => sum + day.actualMinutes, 0);
+    
+    // Calculate score
+    let score = 0;
+    let message = 'No data available';
+    if (totalPlanned > 0) {
+      score = Math.min(100, Math.round((totalActual / totalPlanned) * 100));
+      message = totalActual > 0 ? 'Productivity calculated' : 'No work sessions recorded';
+    }
+
+    // Generate tips
+    const tips = generateProductivityTips(score, totalActual);
+    
+    res.json({
+      success: true,
+      score,
+      message,
+      tips,
+      comparison, // Include the full comparison data
+      meta: {
+        totalPlannedMinutes: totalPlanned,
+        totalActualMinutes: totalActual,
+        week: currentWeek,
+        year: currentYear
+      }
+    });
+  } catch (error) {
+    console.error('Productivity calculation error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error calculating productivity',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
-
-  return comparison;
-}
+});
 // Submit Feedback
 // Submit Feedback
 app.post('/api/developer/:id/feedback', async (req, res) => {
@@ -799,61 +1253,61 @@ app.post('/api/developer/:id/feedback', async (req, res) => {
 
 // Helper Functions
 
-async function calculatePlannedVsActual(developerId, week, year) {
-  const availability = await Availability.findOne({
-    developer: developerId,
-    week,
-    year
-  });
+// async function calculatePlannedVsActual(developerId, week, year) {
+//   const availability = await Availability.findOne({
+//     developer: developerId,
+//     week,
+//     year
+//   });
   
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const comparison = [];
+//   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+//   const comparison = [];
   
-  for (const day of daysOfWeek) {
-    // Calculate planned minutes
-    let plannedMinutes = 0;
-    if (availability && availability.availability[day]) {
-      availability.availability[day].forEach(slot => {
-        const start = moment(slot.startTime, 'HH:mm');
-        const end = moment(slot.endTime, 'HH:mm');
-        plannedMinutes += end.diff(start, 'minutes');
-      });
-    }
+//   for (const day of daysOfWeek) {
+//     // Calculate planned minutes
+//     let plannedMinutes = 0;
+//     if (availability && availability.availability[day]) {
+//       availability.availability[day].forEach(slot => {
+//         const start = moment(slot.startTime, 'HH:mm');
+//         const end = moment(slot.endTime, 'HH:mm');
+//         plannedMinutes += end.diff(start, 'minutes');
+//       });
+//     }
     
-    // Calculate actual minutes
-    const dayStart = moment().isoWeek(week).year(year).isoWeekday(day).startOf('day');
-    const dayEnd = moment(dayStart).endOf('day');
+//     // Calculate actual minutes
+//     const dayStart = moment().isoWeek(week).year(year).isoWeekday(day).startOf('day');
+//     const dayEnd = moment(dayStart).endOf('day');
     
-    const workLogs = await WorkLog.find({
-      developer: developerId,
-      date: {
-        $gte: dayStart.toDate(),
-        $lt: dayEnd.toDate()
-      },
-      logoutTime: { $ne: null }
-    });
+//     const workLogs = await WorkLog.find({
+//       developer: developerId,
+//       date: {
+//         $gte: dayStart.toDate(),
+//         $lt: dayEnd.toDate()
+//       },
+//       logoutTime: { $ne: null }
+//     });
     
-    let actualMinutes = 0;
-    workLogs.forEach(log => {
-      actualMinutes += log.durationMinutes || 0;
-    });
+//     let actualMinutes = 0;
+//     workLogs.forEach(log => {
+//       actualMinutes += log.durationMinutes || 0;
+//     });
     
-    // Calculate productivity percentage (if planned > 0)
-    let productivity = 0;
-    if (plannedMinutes > 0) {
-      productivity = Math.min(100, Math.round((actualMinutes / plannedMinutes) * 100));
-    }
+//     // Calculate productivity percentage (if planned > 0)
+//     let productivity = 0;
+//     if (plannedMinutes > 0) {
+//       productivity = Math.min(100, Math.round((actualMinutes / plannedMinutes) * 100));
+//     }
     
-    comparison.push({
-      day,
-      plannedMinutes,
-      actualMinutes,
-      productivity
-    });
-  }
+//     comparison.push({
+//       day,
+//       plannedMinutes,
+//       actualMinutes,
+//       productivity
+//     });
+//   }
   
-  return comparison;
-}
+//   return comparison;
+// }
 
 async function calculateProductivityScore(developerId) {
   const currentWeek = moment().isoWeek();
