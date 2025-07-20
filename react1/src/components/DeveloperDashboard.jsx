@@ -92,12 +92,12 @@ const DeveloperDashboard = () => {
       todayStatusRes,
       productivityRes
     ] = await Promise.all([
-      axios.get(`http://localhost:5001/api/developer/${developerId}/availability`),
-      axios.get(`http://localhost:5001/api/developer/${developerId}/worklogs`),
-      axios.get(`http://localhost:5001/api/developer/${developerId}/notifications`),
-      axios.get(`http://localhost:5001/api/developer/${developerId}/planned-vs-actual`),
-      axios.get(`http://localhost:5001/api/developer/${developerId}/today-status`),
-      axios.get(`http://localhost:5001/api/developer/${developerId}/productivity`)
+      axios.get(`https://hrm-system-vm5e.onrender.com/api/developer/${developerId}/availability`),
+      axios.get(`https://hrm-system-vm5e.onrender.com/api/developer/${developerId}/worklogs`),
+      axios.get(`https://hrm-system-vm5e.onrender.com/api/developer/${developerId}/notifications`),
+      axios.get(`https://hrm-system-vm5e.onrender.com/api/developer/${developerId}/planned-vs-actual`),
+      axios.get(`https://hrm-system-vm5e.onrender.com/api/developer/${developerId}/today-status`),
+      axios.get(`https://hrm-system-vm5e.onrender.com/api/developer/${developerId}/productivity`)
     ]);
 
     // Ensure plannedVsActual always has valid data
@@ -161,7 +161,7 @@ const DeveloperDashboard = () => {
 // 2. Enhanced data fetching
 const fetchAvailabilityData = async (developerId) => {
   try {
-    const response = await axios.get(`http://localhost:5001/api/developer/${developerId}/availability`);
+    const response = await axios.get(`https://hrm-system-vm5e.onrender.com/api/developer/${developerId}/availability`);
 
     setAvailability(response.data.availability);
     setIsAvailabilitySubmitted(response.data.isSubmitted);
@@ -260,12 +260,12 @@ const saveAvailability = async (developerId, availabilityData) => {
     try {
       if (todayLog.isWorking) {
         // Logout
-        const response = await axios.post(`http://localhost:5001/api/developer/${developer._id}/logout`);
+        const response = await axios.post(`https://hrm-system-vm5e.onrender.com/api/developer/${developer._id}/logout`);
         setTodayLog(response.data.todayLog);
         toast.success('Logged out successfully');
       } else {
         // Login
-        const response = await axios.post(`http://localhost:5001/api/developer/${developer._id}/login`);
+        const response = await axios.post(`https://hrm-system-vm5e.onrender.com/api/developer/${developer._id}/login`);
         setTodayLog(response.data.todayLog);
         toast.success('Logged in successfully');
         
@@ -291,7 +291,7 @@ const saveAvailability = async (developerId, availabilityData) => {
     
     try {
       const response = await axios.post(
-        `http://localhost:5001/api/developer/${developer._id}/availability`,
+        `https://hrm-system-vm5e.onrender.com/api/developer/${developer._id}/availability`,
         { availability }
       );
       
@@ -378,7 +378,7 @@ const saveAvailability = async (developerId, availabilityData) => {
   // Mark notification as read
   const handleNotificationRead = async (id) => {
     try {
-      await axios.put(`http://localhost:5001/api/developer/${developer._id}/notifications/${id}/read`);
+      await axios.put(`https://hrm-system-vm5e.onrender.com/api/developer/${developer._id}/notifications/${id}/read`);
       setNotifications(prev => 
         prev.map(n => n._id === id ? { ...n, isRead: true } : n)
       );
@@ -398,7 +398,7 @@ const saveAvailability = async (developerId, availabilityData) => {
   try {
     setLoading(true);
     await axios.post(
-      `http://localhost:5001/api/developer/${developer._id}/feedback`,
+      `https://hrm-system-vm5e.onrender.com/api/developer/${developer._id}/feedback`,
       { feedback }
     );
     
@@ -427,7 +427,7 @@ const ProductivityDisplay = () => {
     const fetchProductivity = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5001/api/developer/${developer._id}/productivity`
+          `https://hrm-system-vm5e.onrender.com/api/developer/${developer._id}/productivity`
         );
         
         if (response.data.success) {
