@@ -446,7 +446,7 @@ const HRDashboard = () => {
   const [toast, setToast] = useState(null);
 
   // API configuration
-  const API_BASE_URL = 'http://localhost:5001/api';
+  const API_BASE_URL = 'https://hrm-system-vm5e.onrender.com/api';
 
   // Initialize dashboard
   useEffect(() => {
