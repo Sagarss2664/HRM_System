@@ -99,52 +99,55 @@ const transporter = nodemailer.createTransport({
 //     console.error('Error in Monday 9 AM cron job:', error);
 //   }
 // });
-cron.schedule('20 13 * * 0', async () => {
+
+const moment = require('moment');
+const { Employee, Availability, Notification } = require('./models'); // adjust import paths
+// const transporter = require('./mailer'); // your nodemailer transporter setup
+
+// Every Sunday at 1:35 PM
+cron.schedule('35 13 * * 0', async () => {
   try {
-    const developers = await Developer.find().populate('employee');
+    console.log('Running weekly availability reminder cron...');
+
+    // Step 1: Find all employees with role "Developer"
+    const developers = await Employee.find({ role: 'Developer' });
+
     const currentWeek = moment().isoWeek();
     const currentYear = moment().year();
 
     for (const dev of developers) {
       const availability = await Availability.findOne({
-        developer: dev._id,
+        employee: dev._id,
         week: currentWeek,
         year: currentYear
       });
 
       if (!availability || !availability.isSubmitted) {
-        const employee = dev.employee;
-
-        if (!employee || !employee.email) {
-          console.warn(`No employee or email found for developer ${dev._id}`);
-          continue;
-        }
-
-        // Send reminder email
+        // Step 2: Send initial email
         await transporter.sendMail({
           from: process.env.EMAIL_USER,
-          to: employee.email,
+          to: dev.email,
           subject: 'Urgent: Weekly Availability Not Submitted',
           html: `
-            <p>Dear ${employee.name || 'Employee'},</p>
+            <p>Dear ${dev.name},</p>
             <p>You have not submitted your weekly availability yet. Please submit it immediately.</p>
             <p>You will receive reminders every 5 minutes until you submit your availability.</p>
             <p>HR Team</p>
           `
         });
 
-        // Create notification
+        // Step 3: Create a notification
         await Notification.create({
-          developer: dev._id,
+          employee: dev._id,
           title: 'Availability Not Submitted',
           message: 'You have not submitted your weekly availability. Please submit it immediately.',
           type: 'reminder'
         });
 
-        // Schedule 5-minute reminders
+        // Step 4: Start 5-minute interval reminders
         const reminderInterval = setInterval(async () => {
           const updatedAvailability = await Availability.findOne({
-            developer: dev._id,
+            employee: dev._id,
             week: currentWeek,
             year: currentYear
           });
@@ -154,20 +157,21 @@ cron.schedule('20 13 * * 0', async () => {
           } else {
             await transporter.sendMail({
               from: process.env.EMAIL_USER,
-              to: employee.email,
+              to: dev.email,
               subject: 'Reminder: Submit Weekly Availability',
               html: `
-                <p>Dear ${employee.name || 'Employee'},</p>
+                <p>Dear ${dev.name},</p>
                 <p>This is a reminder to submit your weekly availability.</p>
                 <p>HR Team</p>
               `
             });
           }
-        }, 5 * 60 * 1000); // 5 minutes
+        }, 5 * 60 * 1000); // Every 5 minutes
       }
     }
+
   } catch (error) {
-    console.error('Error in Sunday 1:20 PM cron job:', error);
+    console.error('Error in Sunday 1:35 PM cron job:', error);
   }
 });
 
