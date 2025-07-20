@@ -105,7 +105,7 @@ const { Employee, Availability, Notification } = require('./models'); // adjust 
 // const transporter = require('./mailer'); // your nodemailer transporter setup
 
 // Every Sunday at 1:35 PM
-cron.schedule('35 13 * * 0', async () => {
+cron.schedule('44 13 * * 0', async () => {
   try {
     console.log('Running weekly availability reminder cron...');
 
